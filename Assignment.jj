@@ -1,0 +1,449 @@
+
+options {
+        STATIC = false;
+}
+PARSER_BEGIN(Assignment)
+
+import java.util.*;
+import java.util.ArrayList;
+
+public class Assignment{
+
+    Boolean mainf = false;
+    Map<String, LinkedList<funcObj>> tknTrack = new HashMap<String, LinkedList<funcObj>>();
+    //Hashmap stores key-value pair which is used to check for divergence in
+    //the program block, the function name as a String is the key and the value
+    //is a Linked-List which stores all the function calls for the particular function
+    static Map<String, LinkedList<Token>> diverMap = new HashMap<String, LinkedList<Token>>();
+    //The diverList and tempDiver are Linked-List used to handle the function body
+    //for filling the hash-map diverMap with values
+    LinkedList<Token> diverList = new LinkedList<Token>();
+    LinkedList<Token> tempDiver = new LinkedList<Token>();
+    //The tknStore and temper are Linked-List used to handle the function body
+    //for filling the hash-map tknTrack with values
+    LinkedList<Token> tknStore = new LinkedList<Token>();
+    LinkedList<Token> temper = new LinkedList<Token>();
+    //forComp is used for storing functions to compare with function calls
+    //when tryig to find circular function calls
+    static ArrayList<Token> forComp = new ArrayList<Token>();
+    //funcArr stores the function names as Strings.
+    static ArrayList<String> funcArr = new ArrayList<String>();
+    //jstArr stores the function names as Tokens
+    static ArrayList<Token> jstArr = new ArrayList<Token>();
+    //bodyFuncArr stores function calls
+    ArrayList<String> bodyFuncArr = new ArrayList<String>();
+    int counter = 0;
+
+  public static void main(String args []) throws ParseException, TokenMgrError {
+   
+    Assignment parser = new Assignment(System.in);
+
+    try{
+    parser.start();
+    }catch(ParseException e){   //All the parse errors are caught in this catch block
+
+        if(e.currentToken.next.kind == 5 && e.expectedTokenSequences[0][0] == 13){
+            System.out.println("FAIL");
+            System.err.println(e.currentToken.beginLine);
+            System.err.println("Missing Parameters");
+            System.exit(0);
+        }
+        if(!e.currentToken.next.image.equals("DEF") && (e.expectedTokenSequences[0][0] == 0
+            || e.expectedTokenSequences[0][0] == 7)){
+            System.out.println("FAIL");
+            System.err.println(e.currentToken.beginLine);
+            System.err.println("Was expecting a DEF");
+            System.exit(0);
+        }
+        if(e.currentToken.next.kind != 13 && (e.expectedTokenSequences[0][0] == 9
+           || e.expectedTokenSequences[0][0] == 13)){
+            System.out.println("FAIL");
+            System.err.println(e.currentToken.beginLine);
+            System.err.println("Parameter field contains characters other than lower-case letter(s).");
+            System.exit(0);
+        }
+        if(e.currentToken.next.kind != 12 && (e.expectedTokenSequences[0][0] == 12
+           || e.expectedTokenSequences[0][0] == 9 || e.expectedTokenSequences[0][0] == 11)){
+            System.out.println("FAIL");
+            System.err.println(e.currentToken.beginLine);
+            System.err.println("Function name contains DEF or characters other than upper-case letter(s).");
+            System.exit(0);
+        }
+        if(e.currentToken.next.kind != 5 && e.expectedTokenSequences[0][0] == 5){
+            System.out.println("FAIL");
+            System.err.println(e.currentToken.beginLine);
+            System.err.println("Was expecting a { at line " + e.currentToken.beginLine + " column " + e.currentToken.next.beginColumn);
+            System.exit(0);
+        }
+        if((e.currentToken.next.kind == 4 || e.currentToken.next.kind == 6) &&
+            (e.expectedTokenSequences[0][0] == 12 || e.expectedTokenSequences[0][0] == 13 ||
+            e.expectedTokenSequences[0][0] == 14)){
+            System.out.println("FAIL");
+            System.err.println(e.currentToken.beginLine);
+            System.err.println("Function Body cannot be empty");
+            System.exit(0);
+        }
+        if(e.currentToken.next.kind != 10 || e.expectedTokenSequences[0][0] == 10){
+            System.out.println("FAIL");
+            System.err.println(e.currentToken.beginLine);
+            System.err.println("Missing a semicolon");
+            System.exit(0);
+        }
+        else{
+            System.out.println("FAIL");
+            System.err.println(e.currentToken.beginLine);
+            System.err.println("Use of Spaces is not correct");
+            System.exit(0);
+        }
+
+    }catch(TokenMgrError q){    //All the lexical errors are caught in this catch block
+        System.out.println("FAIL");
+        System.err.println("Invalid charachter used");
+        System.exit(0);
+    }
+    System.out.println("PASS");
+
+    //Calling the diverChecker method for every single defined function
+    //to check for divergence
+    for(int i = 0; i < jstArr.size(); i++){
+        forComp.clear();
+        diverChecker(jstArr.get(0));
+    }
+
+  }
+
+//The class funcObj was made in mind to use in navigating through the program
+//block to go through all the function calls so that in the end it just stores
+//all the tokens in the list which can then be evaluated using a stack.
+  static class funcObj{
+    Token t0;
+    LinkedList<funcObj> bodyF = new LinkedList<funcObj>();
+
+    funcObj() {}
+
+    Token getToken(){
+        return t0;
+    }
+
+    void setToken(Token t1){
+        t0 = t1;
+    }
+  }
+
+//Checks for circular calls in functions. If circular calls
+//exit then print Divergence.
+  public static void diverChecker(Token qwe){
+    Token rty = qwe;
+    forComp.add(rty);
+    LinkedList<Token> ng = new LinkedList<Token>();
+    ng = (LinkedList<Token>) diverMap.get(rty.image).clone();
+    for(int i = 0; i < ng.size(); i++){
+        if(forComp.contains(ng.get(i))){
+        System.err.println("DIVERGENCE");
+        System.exit(0);
+        }else{
+            diverChecker(ng.get(i));
+        }
+    }
+  }
+}
+
+PARSER_END(Assignment)
+
+TOKEN :         //This is where all the tokens are defined
+{
+            < PLUS : "+" >
+      |     < MULT : "*" >
+      |     < LBRAC: "(" >
+      |     < RBRAC: ")" >
+      |     < LCURL: "{" >
+      |     < RCURL: "}" >
+      |     < KDEF : "DEF" >
+      |     < EOL  : "\r\n" | "\n" | "\r" >
+      |     < SPACE: " " >
+      |     < SCOLN: ";" >
+      |     < MFUNC: "MAIN" >
+      |     < NFUNC: (["A"-"Z"])+ >
+      |     < PARAM: (["a"-"z"])+ >
+      |     < NUM  : (["0"-"9"])+ >
+
+}
+
+void start() throws ParseException:
+{
+    Token t1 ;
+    Token t2 ;
+    Token t3 ;
+}
+{
+    (
+        //First thing the parser should read is DEF
+        <KDEF>
+        //Followed by a space charachter
+        <SPACE>
+        //The next thing has to be the function name which is either
+        //the Main function or any other function name which adheres
+        //to the token definition
+        (
+            t1 = <MFUNC>
+
+            {
+                //Storing the function name as a String if it isn't already stored.
+                //If its already stored then printing the error on the screen.
+                if(funcArr.contains(t1.image)){
+                    System.out.println("FAIL");
+                    System.out.println(t1.beginLine);
+                    System.err.println("Function name reused");
+                    System.exit(0);
+                }else{
+                    funcArr.add(t1.image);
+                }
+                //Storing the function name as a Token if it isn't already stored.
+                //If its already stored then printing the error on the screen.
+                if(jstArr.contains(t1)){
+                    System.out.println("FAIL");
+                    System.out.println(t1.beginLine);
+                    System.err.println("Function name reused");
+                    System.exit(0);
+                }else{
+                    jstArr.add(t1);
+                }
+            }
+
+            for_mainfunc()
+
+          |
+
+            t2 = <NFUNC>
+
+            {
+                //Storing the function name as a string if it isn't already stored.
+                //If its already stored then printing the error on the screen.
+                if(funcArr.contains(t2.image)){
+                    System.out.println("FAIL");
+                    System.err.println(t2.beginLine);
+                    System.err.println("Function name reused");
+                    System.exit(0);
+                }else{
+                    funcArr.add(t2.image);
+                }
+                //Storing the function name as a Token if it isn't already stored.
+                //If its already stored then printing the error on the screen.
+                if(jstArr.contains(t2)){
+                    System.out.println("FAIL");
+                    System.out.println(t2.beginLine);
+                    System.err.println("Function name reused");
+                    System.exit(0);
+                }else{
+                    jstArr.add(t2);
+                }
+            }
+
+            for_normfunc()
+
+        )
+    )*
+    //End of File token not defined in the token definition as
+    //its pre-defined in the parser.
+    <EOF>
+    {
+        //If the Main function is not present in the program block,
+        //print the below error message.
+        if(!mainf){
+            System.out.println("FAIL");
+            System.err.println("0");
+            System.err.println("Main function not found");
+            System.exit(0);
+        }
+        //If the function body consists of an undefined function,
+        //print the following error message.
+        for(int i = 0; i < bodyFuncArr.size(); i++){
+            if(!funcArr.contains(bodyFuncArr.get(i))){
+                System.out.println("FAIL");
+                System.err.println("Undefined Function used in Function body");
+                System.exit(0);
+            }
+        }
+    }
+}
+
+//Tells us how the tokens should appear once the parser reads the Main function.
+void for_mainfunc() :
+{}
+{
+    {
+        //If this is the first occurence of the Main function,
+        //set mainf to true or elseprint the error message below.
+        if(mainf){
+            System.out.println("FAIL");
+            System.err.println("Main has already been defined");
+            System.exit(0);
+        }else{
+            mainf = true;
+        }
+    }
+    <SPACE>
+    <LCURL>
+    <SPACE>
+    //For parsing the body of the function
+    eval_body(null)
+    <SPACE>
+    {
+        //Values being added to the driverMap Hashmap
+        diverList.addAll(tempDiver);
+        tempDiver.clear();
+        tempDiver = (LinkedList<Token>) diverList.clone();
+        LinkedList<Token> vines = new LinkedList<Token>();
+        vines = (LinkedList<Token>) tempDiver.clone();
+        diverMap.put(funcArr.get(counter), vines);
+        tempDiver.clear();
+        diverList.clear();
+
+        //Values being added to the tkntrack Hashmap
+        tknStore.addAll(temper);
+        temper = (LinkedList<Token>) tknStore.clone();
+        LinkedList<funcObj> tt = new LinkedList<funcObj>();
+        tt = (LinkedList<funcObj>) temper.clone();
+        tknTrack.put(funcArr.get(counter), tt);
+        temper.clear();
+        tknStore.clear();
+        counter++;
+    }
+    <RCURL>
+    <SPACE>
+    <SCOLN>
+    <EOL>
+}
+
+//Tells us how the Tokens should appear once the parsers reads the
+//normal functions.
+void for_normfunc() :
+{
+Token param;
+}
+{
+    <SPACE>
+    param = <PARAM>
+    <SPACE>
+    <LCURL>
+    <SPACE>
+    eval_body(param)
+    <SPACE>
+    {
+        //Values being added to the driverMap Hashmap
+        diverList.addAll(tempDiver);
+        tempDiver.clear();
+        tempDiver = (LinkedList<Token>) diverList.clone();
+        LinkedList<Token> vines = new LinkedList<Token>();
+        vines = (LinkedList<Token>) tempDiver.clone();
+        diverMap.put(funcArr.get(counter), vines);
+        tempDiver.clear();
+        diverList.clear();
+
+        //Values being added to the tknTrack Hashmap
+        tknStore.addAll(temper);
+        temper = (LinkedList<Token>) tknStore.clone();
+        LinkedList<funcObj> tt = new LinkedList<funcObj>();
+        tt = (LinkedList<funcObj>) temper.clone();
+        tknTrack.put(funcArr.get(counter), tt);
+        temper.clear();
+        tknStore.clear();
+        counter++;
+    }
+    <RCURL>
+    <SPACE>
+    <SCOLN>
+    <EOL>
+}
+
+//Specifies how the Tokens can appear inside the function body.
+//Inside this all the operations of adding the function body
+//to the lists which are in the end added to the Hashmaps occur.
+void eval_body(Token param) :
+{
+Token number ;
+Token func_name ;
+Token op ;
+Token parameter;
+}
+{
+    (
+        number = <NUM>
+        {
+            temper.add(number);
+        }
+        |
+        parameter = <PARAM>
+        {
+            temper.add(parameter);
+        }
+        |
+        func_name = <NFUNC>
+        {
+            temper.add(func_name);
+            tempDiver.add(func_name);
+            if(!bodyFuncArr.contains(func_name.image)){
+                bodyFuncArr.add(func_name.image);
+            }
+        }
+        <LBRAC>
+        {
+        diverList.addAll(tempDiver);
+        tempDiver.clear();
+        tknStore.addAll(temper);
+        temper.clear();
+        }
+        eval_body(param)
+        <RBRAC>
+    )
+    (
+        (op = <PLUS>
+        {
+            temper.add(op);
+        }
+        |
+         op = <MULT>
+        {
+            temper.add(op);
+        }
+        )
+
+        (
+            number = <NUM>
+            {
+                temper.add(number);
+            }
+            |
+            parameter = <PARAM>
+            {
+                temper.add(parameter);
+            }
+            |
+            func_name = <NFUNC>
+            {
+                temper.add(func_name);
+                tempDiver.add(func_name);
+                if(!bodyFuncArr.contains(func_name.image)){
+                    bodyFuncArr.add(func_name.image);
+                }
+            }
+            <LBRAC>
+            {
+            diverList.addAll(tempDiver);
+            tempDiver.clear();
+            tknStore.addAll(temper);
+            temper.clear();
+            }
+            eval_body(param)
+            <RBRAC>
+        )
+    )*
+}
+
+
+
+
+
+
+
+
